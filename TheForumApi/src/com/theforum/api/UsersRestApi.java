@@ -4,18 +4,21 @@ import java.net.HttpURLConnection;
 import java.util.Date;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.ws.rs.Consumes;
 
 /**
  * @author David
  */
 
 import javax.ws.rs.GET;
+import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Context;
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 
@@ -28,6 +31,7 @@ import com.theforum.db.Auth;
 import com.theforum.db.Rolls;
 import com.theforum.db.User;
 import com.theforum.dbm.ConnectionManager;
+import com.theforum.json.UserWrapper;
 
 
 @Path("/users")
@@ -45,6 +49,72 @@ public class UsersRestApi {
 		return Response.status(200).entity(result).build();
 	}
 
+	
+	
+	
+	@Path("/regisration")
+	@POST
+	@Consumes(MediaType.APPLICATION_JSON)
+	@Produces("application/json")
+	public Response create(UserWrapper uw)
+			throws JSONException {
+		
+		if (uw.getUsername() == null) {
+			throw new WebApplicationException(
+					Response.status(HttpURLConnection.HTTP_BAD_REQUEST).entity("name parameter is mandatory").build());
+		}
+		if (uw.getEmail() == null) {
+			throw new WebApplicationException(
+					Response.status(HttpURLConnection.HTTP_BAD_REQUEST).entity("email parameter is mandatory").build());
+		}
+		if (uw.getPassword() == null) {
+			throw new WebApplicationException(
+					Response.status(HttpURLConnection.HTTP_BAD_REQUEST).entity("email parameter is mandatory").build());
+		}
+		
+		boolean loginExsists=ConnectionManager.factory().checkLoginExists(uw.getUsername());
+		if(loginExsists) {
+			throw new WebApplicationException(
+					Response.status(HttpURLConnection.HTTP_BAD_REQUEST).entity("login parameter already ussed").build());
+			
+		}
+		
+
+		Rolls rolle = Rolls.USER;
+
+		
+		JSONObject jsonObject = new JSONObject();
+		
+		Auth au = new Auth();
+		au.setLogin(uw.getUsername());
+		au.setEmail(uw.getEmail());
+		au.setRolle(rolle);
+		au.setPassword(uw.getPassword());
+
+		Gson gson = new Gson();
+		
+		try {
+			ConnectionManager.factory().registration(au);
+			jsonObject.put("status", "success");
+			jsonObject.put("message", "Successfully added");
+			jsonObject.put("auth", gson.toJson(au));
+		} catch (Exception e) {
+			e.printStackTrace();
+			// TODO Auto-generated catch block
+			jsonObject.put("status", "failed");
+			jsonObject.put("message", e.getMessage());
+			jsonObject.put("auth", gson.toJson(au));
+		}
+		
+
+		return Response.status(200).entity(jsonObject.toString()).build();
+	}
+	
+	
+	
+	
+	
+	
 	@Path("/regisration")
 	@GET
 	@Produces("application/json")
